@@ -1,6 +1,12 @@
 import random
-
+import os
 import embeddings
+
+if 'HOME' not in os.environ:
+    os.environ['HOME'] = os.path.expanduser('~')
+
+# Set the EMBEDDINGS_ROOT environment variable
+os.environ['EMBEDDINGS_ROOT'] = os.path.join(os.environ['HOME'], '.embeddings')
 
 import minitorch
 from datasets import load_dataset
@@ -35,7 +41,7 @@ class Conv1d(minitorch.Module):
 
     def forward(self, input):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        return minitorch.conv1d(input, self.weights.value) + self.bias.value
 
 
 class CNNSentimentKim(minitorch.Module):
@@ -62,14 +68,27 @@ class CNNSentimentKim(minitorch.Module):
         super().__init__()
         self.feature_map_size = feature_map_size
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.conv1 = Conv1d(embedding_size, feature_map_size, filter_sizes[0])
+        self.conv2 = Conv1d(embedding_size, feature_map_size, filter_sizes[1])
+        self.conv3 = Conv1d(embedding_size, feature_map_size, filter_sizes[2])
+        self.fc = Linear(feature_map_size, 1)
+        self.dropout = dropout
 
     def forward(self, embeddings):
         """
         embeddings tensor: [batch x sentence length x embedding dim]
         """
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        temp_emb = embeddings.permute(0, 2, 1)
+        temp_x1 = minitorch.nn.max(self.conv1(temp_emb).relu(), dim=2)
+        temp_x2 = minitorch.nn.max(self.conv2(temp_emb).relu(), dim=2)
+        temp_x3 = minitorch.nn.max(self.conv3(temp_emb).relu(), dim=2)
+
+        temp_x = temp_x1 + temp_x2 + temp_x3
+        b = temp_x.shape[0]
+        temp_x = self.fc(temp_x.view(b, self.feature_map_size)).relu()
+        temp_x = minitorch.dropout(temp_x, self.dropout, not self.training)
+        return temp_x.sigmoid().view(b)
 
 
 # Evaluation helper methods

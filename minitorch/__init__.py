@@ -1,3 +1,8 @@
+"""minitorch package
+This package provides various modules and functions for tensor operations,
+automatic differentiation, neural network layers, optimization, and more.
+"""
+
 from .testing import MathTest, MathTestVariable  # type: ignore # noqa: F401,F403
 from .datasets import *  # noqa: F401,F403
 from .optim import *  # noqa: F401,F403
