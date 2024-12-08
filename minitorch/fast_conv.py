@@ -91,7 +91,23 @@ def _tensor_conv1d(
     s2 = weight_strides
 
     # TODO: Implement for Task 4.1.
-    raise NotImplementedError("Need to implement for Task 4.1")
+    for i in prange(out_size):
+        temp_idx = np.empty(3, np.int32)
+        to_index(i, out_shape, temp_idx)
+        b, oc, ow = temp_idx
+
+        acc = 0.0
+        for ic in range(in_channels):
+            for k_w in range(kw):
+                offset = (kw - 1 - k_w) if reverse else k_w
+                temp_weight_pos = oc * s2[0] + ic * s2[1] + offset * s2[2]
+                temp_input_w = ow - offset if reverse else ow + offset
+                if 0 <= temp_input_w < width:
+                    temp_input_pos = b * s1[0] + ic * s1[1] + temp_input_w * s1[2]
+                    acc += input[temp_input_pos] * weight[temp_weight_pos]
+
+        out_pos = index_to_position(temp_idx, out_strides)
+        out[out_pos] = acc
 
 
 tensor_conv1d = njit(_tensor_conv1d, parallel=True)
@@ -220,7 +236,28 @@ def _tensor_conv2d(
     s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
 
     # TODO: Implement for Task 4.2.
-    raise NotImplementedError("Need to implement for Task 4.2")
+    for i in prange(out_size):
+        temp_index = np.empty(4, np.int32)
+        to_index(i, out_shape, temp_index)
+        cb, co, ch, cw = temp_index
+
+        acc = 0.0
+        for current_in_channel in range(in_channels):
+            for kernel_h in range(kh):
+                for kernel_w in range(kw):
+                    temp_h_offset = (kh - 1 - kernel_h) if reverse else kernel_h
+                    temp_w_offset = (kw - 1 - kernel_w) if reverse else kernel_w
+                    weight_pos = co * s20 + current_in_channel * s21 + temp_h_offset * s22 + temp_w_offset * s23
+
+                    ih = ch - temp_h_offset if reverse else ch + temp_h_offset
+                    iw = cw - temp_w_offset if reverse else cw + temp_w_offset
+
+                    if 0 <= ih < height and 0 <= iw < width:
+                        input_pos = cb * s10 + current_in_channel * s11 + ih * s12 + iw * s13
+                        acc += input[input_pos] * weight[weight_pos]
+
+        out_pos = index_to_position(temp_index, out_strides)
+        out[out_pos] = acc
 
 
 tensor_conv2d = njit(_tensor_conv2d, parallel=True, fastmath=True)
